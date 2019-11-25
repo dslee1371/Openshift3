@@ -1,0 +1,23 @@
+# group_vars/all file
+
+# The global variable file k8s os_setup
+
+# group_vars/all file
+
+# The global variable file k8s os_setup
+
+repo_srv: 10.0.0.30
+
+name_srv: 10.0.0.55
+
+docker_dev: /dev/sdb
+
+cert_path: /data/cert
+
+cert_addr: registry.test.com
+
+cert_port: 5000
+
+passphrase: admin
+
+root_dir: /data

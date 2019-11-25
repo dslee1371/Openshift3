@@ -1,0 +1,277 @@
+# 하기전에 ping 모듈을 사용하여 공개키를 전달해야한다 (-k 옵션 사용)
+# docker-storage-setup 을 하기 위해서는 사전에 HDD를 추가해야한다. (그것도 용량 좀 크게?)
+# facts(ansible_fqdn)를 이용했다.
+
+---
+- name: To use openshift Infra Setup
+  hosts: all
+  gather_facts: yes
+
+  tasks:      
+    - name: Enable SELinux
+      selinux:
+        state: enforcing
+
+
+    - name: disable service & stop firewalld
+      systemd:
+        name: firewalld
+        state: stopped
+        enabled: no
+
+
+    - name: Set up authorized key from file
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+
+    - name: Disable SWAP 
+      shell: |
+        swapoff -a
+    
+    
+#    이건 fstab에서 삭제
+#    - name: Remove swapfile from /etc/fstab
+#      mount:
+#        name: swap
+#        fstype: swap
+#        state: absent
+
+
+    # 이건 주석처리로 하는것
+    # '# \1' 주석 추가, '\1' 주석 삭제
+    - name: Commenting SWAP Line in /etc/fstab
+      replace:
+        path: /etc/fstab
+        regexp: '(.*swap.*)'
+        replace: '# \1'
+
+
+    - name: Add an /etc/resolv.conf
+      blockinfile:
+        path: /etc/resolv.conf
+        block: |
+          nameserver {{ name_srv }}
+
+
+    - name: Add an /etc/yum.repos.d/
+      blockinfile:
+        path: /etc/yum.repos.d/http.repo
+        create: yes
+        block: |
+          [rhel-7-server-rpms]
+          name=rhel-7-server-rpms
+          baseurl=http://{{ repo_srv }}/repos/rhel-7-server-rpms
+          enabled=1
+          gpgcheck=0
+
+          [rhel-7-server-extras-rpms]
+          name=rhel-7-server-extras-rpms
+          baseurl=http://{{ repo_srv }}/repos/rhel-7-server-extras-rpms
+          enabled=1
+          gpgcheck=0
+          
+          [rhel-7-server-ansible-2.6-rpms]
+          name=rhel-7-server-ansible-2.6-rpms
+          baseurl=http://{{ repo_srv }}/repos/rhel-7-server-ansible-2.6-rpms
+          enabled=1
+          gpgcheck=0
+
+          [rhel-7-server-ose-3.11-rpms]
+          name=rhel-7-server-ose-3.11-rpms
+          baseurl=http://{{ repo_srv }}/repos/rhel-7-server-ose-3.11-rpms
+          enabled=1
+          gpgcheck=0
+
+
+    - name: Base Package Install
+      yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+        - wget
+        - git
+        - net-tools
+        - bind
+        - bind-utils
+        - iptables-services
+        - bridge-utils
+        - bash-completion
+        - kexec-tools
+        - sos
+        - psacct
+        - vim
+        - tree
+        - openshift-ansible
+        - httpd
+        - nfs-utils
+        - libnfsidmap
+        - util-linux
+     
+     
+    - name: Installing Docker
+      yum:
+        name: docker
+        state: present
+    
+    
+    - name: Docker storage-setup Conf
+      blockinfile:
+        path: /etc/sysconfig/docker-storage-setup
+        block: |
+          DEVS={{ docker_dev }}
+          VG=docker-vg
+          WIPE_SIGNATURES=true
+          CONTAINER_ROOT_LV_NAME=docker-lv
+          CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/docker
+         
+         
+    - name: Docker storage setup
+      shell: |
+        docker-storage-setup
+        
+        
+    - name: Docker daemon restart
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+
+ 
+    - name: Installing Docker-Distribution
+      yum:
+        name: docker-distribution
+        state: present
+      when: ansible_fqdn == 'registry.test.com'
+        
+        
+    - name: Create a directory if it does not exist
+      file:
+        path: /data/cert
+        state: directory
+        mode: '0755'
+      when: ansible_fqdn == 'registry.test.com'  
+
+
+    - name: Generate an OpenSSL private key with the different values (2048 bits, RSA) and a passphrase
+      openssl_privatekey:
+        path: "{{ cert_path }}/{{ cert_addr }}.key"
+        passphrase: "{{ passphrase }}"
+        size: 2048
+        cipher: auto
+      when: ansible_fqdn == 'registry.test.com'  
+
+    
+    - name: Generate an OpenSSL Certificate Signing Request with a passphrase protected private key
+      openssl_csr:
+        path: "{{ cert_path }}/{{ cert_addr }}.csr"
+        privatekey_path: "{{ cert_path }}/{{ cert_addr }}.key"
+        privatekey_passphrase: "{{ passphrase }}"
+        common_name: "{{ cert_addr }}"
+      when: ansible_fqdn == 'registry.test.com'  
+
+        
+    - name: copy .key to the .key.origin file
+      shell: |
+        \cp "{{ cert_path }}/{{ cert_addr }}.key" "{{ cert_path }}/{{ cert_addr }}.key.origin" 
+      when: ansible_fqdn == 'registry.test.com'  
+
+        
+    - name: Deencrypt passphrase
+      shell: |
+        openssl rsa -in "{{ cert_path }}/{{ cert_addr }}.key.origin" -passin pass:"{{ passphrase }}" -out "{{ cert_path }}/{{ cert_addr }}.key"
+      when: ansible_fqdn == 'registry.test.com'  
+        
+
+    - name: Generate an OpenSSL certificate signed with your own CA certificate
+      openssl_certificate:
+        path: "{{ cert_path }}/{{ cert_addr }}.crt"
+        csr_path: "{{ cert_path }}/{{ cert_addr }}.csr"
+        privatekey_path: "{{ cert_path }}/{{ cert_addr }}.key"
+        provider: selfsigned
+        subject:
+          common Name: "{{ cert_addr }}"
+        issuer:
+          commonName: "{{ cert_addr }}"
+      when: ansible_fqdn == 'registry.test.com'  
+        
+
+    - name: Making docker-distribution Config.yml
+      blockinfile:
+        path: /etc/docker-distribution/registry/config.yml
+        block: |
+          version: 0.1
+          log:
+            fields:
+              service: registry
+          storage:
+              cache:
+                  layerinfo: inmemory
+              filesystem:
+                  rootdirectory: {{ root_dir }}
+          http:
+            addr: "{{ cert_addr }}:{{ cert_port }}"
+            headers:
+              X-Content-Type-Options: [nosniff]
+            tls:
+              certificate: "{{ cert_path }}/{{ cert_addr }}.crt"
+              key: "{{ cert_path }}/{{ cert_addr }}.key"
+
+          health:
+            storagedriver:
+              enabled: true
+              interval: 60s
+              threshold: 3
+              
+      when: ansible_fqdn == 'registry.test.com'  
+
+              
+    - name: Docker-Docker-Distribution daemon restart
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+      with_items:
+        - docker
+        - docker-distribution
+      when: ansible_fqdn == 'registry.test.com'  
+
+
+    - name: Remove /etc/docker/daemon.json file
+      file:
+        path: /etc/docker/daemon.json
+        state: absent
+      when: ansible_fqdn == 'registry.test.com'  
+
+        
+    - name: Making /etc/docker/daemon.json file
+      file:
+        path: /etc/docker/daemon.json
+        state: touch
+      when: ansible_fqdn == 'registry.test.com'  
+
+    
+    # 일부러 한 줄 띄어쓴것, 그렇지 않으면 하나로 이해하여 작은 따옴표로 자동 변환됐음
+    - name: Making insecure registry setting
+      blockinfile:
+        path: /etc/docker/daemon.json
+        marker: ''
+        block: |
+          
+          {"insecure-registries": ["{{ cert_addr }}:{{ cert_port }}"]}
+      when: ansible_fqdn == 'registry.test.com'  
+
+   
+    - name: Docker daemon restart
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+      with_items:
+        - docker
