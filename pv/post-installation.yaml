@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  creationTimestamp: 2019-11-05T07:42:48Z
+  finalizers:
+  - kubernetes.io/pv-protection
+  name: registry-volume
+  resourceVersion: "200895"
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 500Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: registry-claim
+    namespace: default
+  nfs:
+    path: /volumes/registry
+    server: dns.futuregen-ocp.lab
+  persistentVolumeReclaimPolicy: Retain
+
