@@ -1,0 +1,225 @@
+yum install dhcp
+yum install haproxy
+yum install bind-utils
+
+domain name : cp4app.infra
+
+----dns record ----
+ns1.cp4app.infra
+master01.ocp42.cp4app.infra
+master02.ocp42.cp4app.infra
+master03.ocp42.cp4app.infra
+worker01.ocp42.cp4app.infra
+worker02.ocp42.cp4app.infra
+
+---- server list ----
+ETC 4core/8g/1t rhel7.6 root/redhat 	10.1.11.164
+worker01  16c/32g/300g					10.1.11.154
+worker02  16c/32g/300g					10.1.11.155
+master01  
+
+
+----dhcp configuration ----
+
+# dhcpd.conf
+#
+# Sample configuration file for ISC dhcpd
+#
+
+# option definitions common to all supported networks...
+option domain-name "cp4app.infra";
+option domain-name-servers ns1.cp4app.infra;
+
+default-lease-time 600;
+max-lease-time 7200;
+
+# Use this to enble / disable dynamic dns updates globally.
+#ddns-update-style none;
+
+# If this DHCP server is the official DHCP server for the local
+# network, the authoritative directive should be uncommented.
+#authoritative;
+
+# Use this to send dhcp log messages to a different log file (you also
+# have to hack syslog.conf to complete the redirection).
+log-facility local7;
+
+# No service will be given on this subnet, but declaring it helps the
+# DHCP server to understand the network topology.
+
+
+# A slightly different configuration for an internal subnet.
+subnet 10.1.11.0 netmask 255.255.255.0 {
+  range 10.1.11.10 10.1.11.200;
+  option domain-name-servers ns1.cp4app.infra;
+  option domain-name "internal.cp4app.infra";
+  option routers 10.1.11.254;
+  default-lease-time 600;
+  max-lease-time 7200;
+}
+
+# Hosts which require special configuration options can be listed in
+# host statements.   If no address is specified, the address will be
+# allocated dynamically (if possible), but the host-specific information
+# will still come from the host declaration.
+
+
+# Fixed IP addresses can also be specified for hosts.   These addresses
+# should not also be listed as being available for dynamic assignment.
+# Hosts for which fixed IP addresses have been specified can boot using
+# BOOTP or DHCP.   Hosts for which no fixed address is specified can only
+# be booted with DHCP, unless there is an address range on the subnet
+# to which a BOOTP client is connected which has the dynamic-bootp flag
+# set.
+host boot {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.165;
+  option host-name boot.ocp42.cp4app.infra;
+}
+
+host master01 {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.151;
+  option host-name master01.ocp42.cp4app.infra;
+}
+
+host master02 {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.152;
+  option host-name master02.ocp42.cp4app.infra;
+}
+
+host master03 {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.153;
+  option host-name master03.ocp42.cp4app.infra;
+}
+
+host worker01 {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.154;
+  option host-name worker01.ocp42.cp4app.infra;
+}
+
+host worker02 {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address 10.1.11.155;
+  option host-name worker02.ocp42.cp4app.infra;
+}
+
+systemctl start dhcpd
+systemctl enalbe dhcpd
+
+---- firewall setting ----
+dhcp port setting
+iptables -A INPUT -p udp --dport 67 -j ACCEPT
+iptables -A INPUT -p udp --dport 68 -j ACCEPT
+iptables -A INPUT -p tcp --dport 67 -j ACCEPT
+iptables -A INPUT -p tcp --dport 68 -j ACCEPT
+iptables-save > /etc/sysconfig/iptables;
+firewall-cmd --permanent --zone=public --add-port=67/udp
+firewall-cmd --permanent --zone=public --add-port=68/udp
+firewall-cmd --permanent --zone=public --add-port=67/tcp
+firewall-cmd --permanent --zone=public --add-port=68/tcp
+firewall-cmd --reload
+
+dns port setting
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+iptables-save > /etc/sysconfig/iptables;
+firewall-cmd --permanent --zone=public --add-port=53/tcp
+firewall-cmd --permanent --zone=public --add-port=53/udp
+firewall-cmd --reload
+
+
+---- dns setting ----
+# /etc/named.conf
+zone "ocp42.cp4app.infra" IN {
+        type master;
+        file "/var/named/ocp42.cp4app.infra.db";
+        allow-update { none; };
+};
+
+
+zone "11.1.10.in-addr.arpa" IN {
+        type master;
+        file "/var/named/ocp42.cp4app.infra.rr.db";
+        allow-update { none; };
+};
+
+$TTL	3h
+@   IN  SOA	@ dns.ocp42.cp4app.infra. (
+                                                1001    ;Serial
+                                                3H      ;Refresh
+                                                15M     ;Retry
+                                                1W      ;Expire
+                                                1D      ;Minimum TTL
+                                                )
+
+
+;Name Server Information
+	IN	NS	dns.ocp42.cp4app.infra.
+
+;IP address of Name Server
+ns1	      IN      A       10.1.11.164
+dns	IN	A	10.1.11.164
+boot	IN	A	10.1.11.165
+master01      IN      A       10.1.11.151
+master02          IN      A       10.1.11.152
+master03          IN      A       10.1.11.153
+apps          IN      A       10.1.11.164
+etcd-0        IN      A       10.1.11.151
+etcd-1            IN      A       10.1.11.152
+etcd-2            IN      A       10.1.11.153
+paasmaster    IN      A       10.1.11.151
+api           IN      A       10.1.11.164
+api-int       IN      A       10.1.11.164
+worker01      IN      A       10.1.11.154
+worker02      IN      A       10.1.11.155
+
+; Service of Ingress Router
+$ORIGIN apps.ocp42.cp4app.infra.
+$TTL 180        ; 3 minutes
+*               IN      A       10.1.11.164
+
+;SRV - Generalized service location record, used for newer protocols instead of creating protocol-specific records such as MX.
+_etcd-server-ssl._tcp   IN SRV 0 10 2380 etcd-0.ocp42.cp4app.infra.
+_etcd-server-ssl._tcp   IN SRV 0 10 2380 etcd-1.ocp42.cp4app.infra.
+_etcd-server-ssl._tcp   IN SRV 0 10 2380 etcd-2.ocp42.cp4app.infra.
+
+
+$TTL 3H
+@       IN SOA  @ ocp4.ocp4app.infra. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+                IN      NS      @
+                IN      A       10.1.11.164
+ns              IN      A       10.1.11.164
+boot 			  IN 	  A 	  10.1.11.165
+api 			  IN 	  A 	  10.1.11.164
+api-int 		  IN 	  A 	  10.1.11.164
+master01          IN      A       10.1.11.151
+master02		  IN 	  A 	  10.1.11.152
+master03 		  IN 	  A 	  10.1.11.153
+worker01		  IN 	  A 	  10.1.11.154
+worker02 		  IN 	  A 	  10.1.11.155
+
+$TTL 86400
+@   IN  SOA     masterdns.unixmen.local. root.unixmen.local. (
+        2011071001  ;Serial
+        3600        ;Refresh
+        1800        ;Retry
+        604800      ;Expire
+        86400       ;Minimum TTL
+)
+@       IN  NS          masterdns.unixmen.local.
+@       IN  NS          secondarydns.unixmen.local.
+@       IN  A           192.168.1.101
+@       IN  A           192.168.1.102
+@       IN  A           192.168.1.103
+masterdns       IN  A   192.168.1.101
+secondarydns    IN  A   192.168.1.102
+client          IN  A   192.168.1.103
