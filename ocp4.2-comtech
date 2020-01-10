@@ -223,3 +223,85 @@ $TTL 86400
 masterdns       IN  A   192.168.1.101
 secondarydns    IN  A   192.168.1.102
 client          IN  A   192.168.1.103
+
+---- add core user ----
+useradd core
+passwd core
+
+visudo
+## Allows people in group wheel to run all commands
+# %wheel        ALL=(ALL)       <- 주석처리 해제
+
+usermod -aG wheel core
+
+su core -
+groups
+
+sudo whoami
+
+#============== /etc/sudoers 파일 편집
+## Allows people in group wheel to run all commands
+# %wheel ALL=(ALL) ALL
+
+## Same thing without a password
+%wheel ALL=(ALL) NOPASSWD: ALL
+
+#refer url
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux_OpenStack_Platform/2/html/Getting_Started_Guide/ch02s03.html
+
+---- httpd ----
+yum install httpd
+
+# 포트 변경 해당파일 편접 Listen 8080
+vi /etc/httpd/conf/httpd.conf 
+
+# 서비스 시작
+systemctl enable httpd
+systemctl start httpd
+
+----firewalll setting----
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 8080 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 2379:2380 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 6443 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 9000:9999 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 10249:10259 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p tcp -m tcp --dport 10256 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p udp -m udp --dport 4789 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p udp -m udp --dport 6081 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p udp -m udp --dport 9000:9999 -j ACCEPT;
+iptables -I INPUT -m state --state NEW -p udp -m udp --dport 30000:32767 -j ACCEPT;
+iptables-save > /etc/sysconfig/iptables;
+
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+firewall-cmd --zone=public --add-port=2379-2380/tcp --permanent
+firewall-cmd --zone=public --add-port=6443/tcp --permanent
+firewall-cmd --zone=public --add-port=9000-9999/tcp --permanent
+firewall-cmd --zone=public --add-port=10249-10259/tcp --permanent
+firewall-cmd --zone=public --add-port=10256/tcp --permanent
+firewall-cmd --zone=public --add-port=4789/udp --permanent
+firewall-cmd --zone=public --add-port=6081/udp --permanent
+firewall-cmd --zone=public --add-port=9000-9999/udp --permanent
+firewall-cmd --zone=public --add-port=30000-32767/udp --permanent
+firewall-cmd --zone=public --add-port=22623/tcp --permanent
+firewall-cmd --reload
+
+---- dns check ----
+dig master01.ocp42.cp4app.infra +short
+dig master02.ocp42.cp4app.infra +short
+dig master03.ocp42.cp4app.infra +short
+dig worker01.ocp42.cp4app.infra +short
+dig worker02.ocp42.cp4app.infra +short
+dig boot.ocp42.cp4app.infra +short
+dig etcd-0.ocp42.cp4app.infra +short
+dig etcd-1.ocp42.cp4app.infra +short
+dig etcd-2.ocp42.cp4app.infra +short
+dig -x 10.1.11.164 +short
+dig -x 10.1.11.151 +short
+dig -x 10.1.11.152 +short
+dig -x 10.1.11.153 +short
+dig -x 10.1.11.154 +short
+dig -x 10.1.11.155 +short
+dig api.ocp42.cp4app.infra +short
+dig api-int.ocp42.cp4app.infra +short
+dig *.apps.ocp42.cp4app.infra +short
+dig _etcd-server-ssl._tcp.ocp42.cp4app.infra SRV +short
