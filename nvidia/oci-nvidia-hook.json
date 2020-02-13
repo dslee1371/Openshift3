@@ -1,0 +1,8 @@
+cat <<EOF >> /usr/share/containers/oci/hooks.d/oci-nvidia-hook.json
+{
+  "hook": "/usr/bin/nvidia-container-runtime-hook",
+  "arguments": ["prestart"],
+  "annotations": ["sandbox"],
+  "stage": [ "prestart" ]
+}
+EOF
