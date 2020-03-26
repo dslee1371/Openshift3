@@ -1,0 +1,8 @@
+- hosts: all
+
+  tasks:
+  - name: copy repo file to node macines
+    copy:
+      src: /root/ocp-install/internal.repo
+      dest: /etc/yum.repos.d/
+      force: no

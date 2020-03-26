@@ -1,0 +1,13 @@
+- hosts: all
+
+  tasks:
+  - name: copy docker file to node macines
+    copy:
+      src: /etc/sysconfig/docker
+      dest: /etc/sysconfig
+      force: yes
+  - name: copy repo file to node macines
+    copy:
+      src: /etc/sysconfig/docker-storage-setup
+      dest: /etc/sysconfig
+      force: yes
