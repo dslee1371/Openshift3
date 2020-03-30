@@ -59,3 +59,21 @@ ADD_REGISTRY='--add-registry registry.fulab1.futuregen.lab:8443 --add-registry r
 INSECURE_REGISTRY='--insecure-registry registry.fulab1.futuregen.lab:8443'
 
 ```
+
+## Traffic monitoring
+```
+tcpdump -i ens224 | grep 30.101
+```
+
+## no route issue
+```
+## IPv4 traffic configuration
+/sbin/sysctl -w net.ipv4.ip_forward=1 # 1 value check
+
+## edit file as /etc/sysctl.conf
+net.ipv4.ip_forward=1
+
+## masquerade check
+firewall-cmd --permanent --zone=public --add-masquerade
+firewall-cmd --reload
+```
