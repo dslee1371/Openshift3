@@ -1,0 +1,8 @@
+- hosts: all
+
+  tasks:
+  - name: copy docker certificate file to node macines
+    copy:
+      src: /etc/sysconfig/docker
+      dest: /etc/sysconfig/docker
+      force: yes

@@ -1,0 +1,21 @@
+- hosts: all
+
+  tasks:
+  - name: create folder 
+    file:
+      path: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab
+      state: directory
+  - name: create folder (5000)
+    file:
+      path: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab:5000
+      state: directory
+  - name: copy docker certificate file to node macines
+    copy:
+      src: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab/registry-dist.fulab1.futuregen.lab.crt
+      dest: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab/registry-dist.fulab1.futuregen.lab.crt
+      force: yes
+  - name: copy docker certificate file to node machines (5000)
+    copy:
+      src: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab:5000/registry-dist.fulab1.futuregen.lab.crt
+      dest: /etc/docker/certs.d/registry-dist.fulab1.futuregen.lab:5000/registry-dist.fulab1.futuregen.lab.crt
+      force: yes
