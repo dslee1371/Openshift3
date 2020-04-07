@@ -68,7 +68,7 @@ mount /dev/mapper/reg--dist--vg-reg--dist--lv  /data-reg-dist
 ```
 
 ## Create registry certificate
-
+```
 > name defind
 registry-dist.fulab1.futuregen.lab 
 admin / admin
@@ -98,9 +98,9 @@ cp /opt/certs-registry-distribution/registry-dist.fulab1.futuregen.lab.key /opt/
 openssl rsa -in /opt/certs-registry-distribution/registry-dist.fulab1.futuregen.lab.key.origin -out /opt/certs-registry-distribution/registry-dist.fulab1.futuregen.lab.key
 
 openssl x509 -req -days 3650 -in registry-dist.fulab1.futuregen.lab.csr -signkey registry-dist.fulab1.futuregen.lab.key -out registry-dist.fulab1.futuregen.lab.crt
-
+```
 ## Configure docker-distribution
-
+```
 yum -y install docker-distribution
 
 -- Edit file as cat /etc/docker-distribution/registry/config.yaml
@@ -125,33 +125,40 @@ health:
     enabled: true
     interval: 60s
     threshold: 3
-
+```
 ## Configure setting firewall
-firewall-cmd --add-port=5000/tcp
+`firewall-cmd --add-port=5000/tcp`
 
 ## Copy Certificate
+```
 /etc/docker/certs.d/ # in `fqdn:port/__.crt`
+```
 
 ## Action
+```
 update-ca-trust enable
 systemctl daemon-reload
 systemctl restart docker
 systemctl restart docker-distribution
 systemctl enalbe docker-distribution
+```
 
 ## verify check
+```
 registry.redhat.io/openshift3/csi-attacher:v3.11.170
 docker tag registry.redhat.io/openshift3/csi-attacher:v3.11.170 registry-dist.fulab1.futuregen.lab:5000/openshift3/csi-attacher:v3.11.170
 docker push registry-dist.fulab1.futuregen.lab:5000/openshift3/csi-attacher:v3.11.170
-
+```
 ## Remark - harbor docker certifacate with certificate without id authentication
+```
 docker pull nginx
 docker tag docker.io/nginx:latest registry.fulab1.futuregen.lab:8443/ocp311170/nginx:latest
 docker push registry.fulab1.futuregen.lab:8443/ocp311170/nginx:latest
-
+```
 ## refer
+```
 id/pw configure - https://www.centlinux.com/2019/04/configure-secure-registry-docker-distribution-centos-7.html
-
+```
 ## check nginx on node from bastion
 ```
 docker pull nginx
@@ -160,6 +167,7 @@ docker pull registry-dist.fulab1.futuregen.lab:5000/nginx:latest
 ```
 
 ## CA
+```
 Install the ca-certificates package:
 	`um install ca-certificates`
 Enable the dynamic CA configuration feature:
@@ -168,10 +176,12 @@ Add it as a new file to /etc/pki/ca-trust/source/anchors/:
 	`cp foo.crt /etc/pki/ca-trust/source/anchors/`
 Use command:
 	`update-ca-trust extract`
-
+```
 
 ## LL
+```
 sublime text tool study
 system mgmgt tools (pstree, lsof, strace) study
 -- yum install -y net-tools psmisc lsof strace
 ssh session mgmt
+```
