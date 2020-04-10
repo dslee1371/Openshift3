@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dslee-test3-mysql
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 500Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: mysql
+    namespace: dslee-test3
+  nfs:
+    path: /volumes/pvs/dslee-test3
+    server: fulab1-02-nfs1.fulab1.futuregen.lab
+  persistentVolumeReclaimPolicy: Retain
