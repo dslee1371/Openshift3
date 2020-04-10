@@ -1,0 +1,12 @@
+- hosts: masters
+
+  tasks:
+  - name: create folder 
+    file:
+      path: /etc/origin/master/certs
+      state: directory
+  - name: copy docker certificate file to node macines
+    copy:
+      src: /opt/certs-registry-distribution-2/registry-dist.fulab1.futuregen.lab.pem
+      dest: /etc/origin/master/certs/registry-dist.fulab1.futuregen.lab.pem
+      force: yes

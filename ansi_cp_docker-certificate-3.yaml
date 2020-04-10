@@ -1,0 +1,8 @@
+- hosts: all
+
+  tasks:
+  - name: copy docker certificate file to node macines
+    copy:
+      src: /opt/certs-registry-distribution-2/registry-dist.fulab1.futuregen.lab.pem
+      dest: /etc/pki/tls/certs/registry-dist.fulab1.futuregen.lab.pem
+      force: yes
