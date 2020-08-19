@@ -15,7 +15,7 @@ echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/ip_forward.conf
 
 ## Enable NAT
 
-IP masquerading must now be enabled using iptables.
+IP masquerading must now be enabled using iptables. ens192 is public ip.
 
 ```
 firewall-cmd --permanent --direct --passthrough ipv4 -t nat -I POSTROUTING -o ens192 -j MASQUERADE -s 192.168.30.0/24
